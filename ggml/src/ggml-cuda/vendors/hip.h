@@ -10,6 +10,9 @@
 #include "rocblas/rocblas.h"
 #endif // __HIP_PLATFORM_AMD__
 
+#define CUBLAS_COMPUTE_16F HIPBLAS_COMPUTE_16F
+#define CUBLAS_COMPUTE_32F HIPBLAS_COMPUTE_32F
+#define CUBLAS_COMPUTE_32F_FAST_16F HIPBLAS_COMPUTE_32F_FAST_16F
 #define CUBLAS_GEMM_DEFAULT HIPBLAS_GEMM_DEFAULT
 #define CUBLAS_GEMM_DEFAULT_TENSOR_OP HIPBLAS_GEMM_DEFAULT
 #define CUBLAS_OP_N HIPBLAS_OP_N
@@ -25,8 +28,9 @@
 #define CU_MEM_LOCATION_TYPE_DEVICE hipMemLocationTypeDevice
 #define CU_MEM_ACCESS_FLAGS_PROT_READWRITE hipMemAccessFlagsProtReadWrite
 #define CU_CHECK(fn) {hipError_t err = fn; if(err != hipSuccess) { GGML_ABORT("HipVMM Failure: %s\n", hipGetErrorString(err)); }}
-#define __shfl_sync(mask, var, laneMask, width) __shfl(var, laneMask, width)
-#define __shfl_xor_sync(mask, var, laneMask, width) __shfl_xor(var, laneMask, width)
+//#define __shfl_sync(mask, var, laneMask, width) __shfl(var, laneMask, width)
+//#define __shfl_xor_sync(mask, var, laneMask, width) __shfl_xor(var, laneMask, width)
+#define cublasComputeType_t hipblasComputeType_t
 #define cublasCreate hipblasCreate
 #define cublasDestroy hipblasDestroy
 #define cublasGemmEx hipblasGemmEx
@@ -38,6 +42,7 @@
 #define cublasSgemm hipblasSgemm
 #define cublasStatus_t hipblasStatus_t
 #define cublasOperation_t hipblasOperation_t
+#define cudaDataType_t hipDataType
 #define cudaDeviceCanAccessPeer hipDeviceCanAccessPeer
 #define cudaDeviceDisablePeerAccess hipDeviceDisablePeerAccess
 #define cudaDeviceEnablePeerAccess hipDeviceEnablePeerAccess
@@ -139,20 +144,6 @@
 #define CUBLAS_STATUS_INTERNAL_ERROR HIPBLAS_STATUS_INTERNAL_ERROR
 #define CUBLAS_STATUS_NOT_SUPPORTED HIPBLAS_STATUS_NOT_SUPPORTED
 
-#if defined(__HIP_PLATFORM_AMD__) && HIP_VERSION >= 70000000
-#define CUBLAS_COMPUTE_16F HIPBLAS_COMPUTE_16F
-#define CUBLAS_COMPUTE_32F HIPBLAS_COMPUTE_32F
-#define CUBLAS_COMPUTE_32F_FAST_16F HIPBLAS_COMPUTE_32F_FAST_16F
-#define cublasComputeType_t hipblasComputeType_t
-#define cudaDataType_t hipDataType
-#else
-#define CUBLAS_COMPUTE_16F HIPBLAS_R_16F
-#define CUBLAS_COMPUTE_32F HIPBLAS_R_32F
-#define CUBLAS_COMPUTE_32F_FAST_16F HIPBLAS_R_32F
-#define cublasComputeType_t hipblasDatatype_t
-#define cudaDataType_t hipblasDatatype_t
-#endif
-
 #define __CUDA_ARCH__ 1300
 
 #if defined(__gfx803__) || defined(__gfx900__) || defined(__gfx906__)
@@ -160,19 +151,7 @@
 #endif
 
 #if defined(__gfx908__) || defined(__gfx90a__) || defined(__gfx942__)
-#define CDNA // For the entire family
-#endif
-
-#if defined(__gfx942__)
-#define CDNA3
-#endif
-
-#if defined(__gfx90a__)
-#define CDNA2
-#endif
-
-#if defined(__gfx908__)
-#define CDNA1
+#define CDNA
 #endif
 
 #if defined(__GFX12__)
