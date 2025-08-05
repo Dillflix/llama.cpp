@@ -5,10 +5,8 @@
 #include <hipblas/hipblas.h>
 #include <hip/hip_fp16.h>
 #include <hip/hip_bfloat16.h>
-#ifdef __HIP_PLATFORM_AMD__
 // for rocblas_initialize()
 #include "rocblas/rocblas.h"
-#endif // __HIP_PLATFORM_AMD__
 
 #define CUBLAS_COMPUTE_16F HIPBLAS_COMPUTE_16F
 #define CUBLAS_COMPUTE_32F HIPBLAS_COMPUTE_32F
@@ -144,6 +142,24 @@
 #define CUBLAS_STATUS_INTERNAL_ERROR HIPBLAS_STATUS_INTERNAL_ERROR
 #define CUBLAS_STATUS_NOT_SUPPORTED HIPBLAS_STATUS_NOT_SUPPORTED
 
+#if HIP_VERSION >= 70000000
+#define CUBLAS_COMPUTE_16F HIPBLAS_COMPUTE_16F
+#define CUBLAS_COMPUTE_32F HIPBLAS_COMPUTE_32F
+#define CUBLAS_COMPUTE_32F_FAST_16F HIPBLAS_COMPUTE_32F_FAST_16F
+#define cublasComputeType_t hipblasComputeType_t
+#define cudaDataType_t hipDataType
+#else
+#define CUBLAS_COMPUTE_16F HIPBLAS_R_16F
+#define CUBLAS_COMPUTE_32F HIPBLAS_R_32F
+#define CUBLAS_COMPUTE_32F_FAST_16F HIPBLAS_R_32F
+#define cublasComputeType_t hipblasDatatype_t
+#define cudaDataType_t hipblasDatatype_t
+#endif // HIP_VERSION >= 7000000
+
+#if !defined(__HIP_PLATFORM_AMD__)
+#error "The HIP backend supports only AMD targets"
+#endif // !defined(__HIP_PLATFORM_AMD__)
+
 #define __CUDA_ARCH__ 1300
 
 #if defined(__gfx803__) || defined(__gfx900__) || defined(__gfx906__)
@@ -228,7 +244,7 @@ static __device__ __forceinline__ unsigned int __vcmpne4(unsigned int a, unsigne
     return c;
 }
 
-#if defined(__HIP_PLATFORM_AMD__) && HIP_VERSION < 50600000
+#if HIP_VERSION < 50600000
 // __shfl_xor() for half2 was added in ROCm 5.6
 static __device__ __forceinline__ half2 __shfl_xor(half2 var, int laneMask, int width) {
     typedef union half2_b32 {
@@ -240,4 +256,4 @@ static __device__ __forceinline__ half2 __shfl_xor(half2 var, int laneMask, int 
     tmp.b32 = __shfl_xor(tmp.b32, laneMask, width);
     return tmp.val;
 }
-#endif // defined(__HIP_PLATFORM_AMD__) && HIP_VERSION < 50600000
+#endif // HIP_VERSION < 50600000

@@ -34,8 +34,8 @@ if (NOT GGML_SHARED_LIB)
 
     if (GGML_BLAS)
         find_dependency(BLAS)
-        list(APPEND GGML_CPU_INTERFACE_LINK_LIBRARIES ${BLAS_LIBRARIES})
-        list(APPEND GGML_CPU_INTERFACE_LINK_OPTIONS   ${BLAS_LINKER_FLAGS})
+        list(APPEND GGML_BLAS_INTERFACE_LINK_LIBRARIES ${BLAS_LIBRARIES})
+        list(APPEND GGML_BLAS_INTERFACE_LINK_OPTIONS   ${BLAS_LINKER_FLAGS})
     endif()
 
     if (GGML_CUDA)
@@ -106,7 +106,7 @@ if(NOT TARGET ggml::ggml)
 
     find_library(GGML_LIBRARY ggml
         REQUIRED
-        HINTS ${GGML_LIB_DIR}
+        HINTS ${GGML_LIB_DIR} ${GGML_BACKEND_DIR}
         NO_CMAKE_FIND_ROOT_PATH)
 
     add_library(ggml::ggml UNKNOWN IMPORTED)
