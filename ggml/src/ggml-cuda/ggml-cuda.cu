@@ -2192,6 +2192,11 @@ static void ggml_cuda_mul_mat_id(ggml_backend_cuda_context & ctx, ggml_tensor * 
         dst_slice.nb[3]  = dst_slice.ne[2] * dst_slice.nb[2];
         dst_slice.data   = dst_data_cur;
 
+        // Make sure the inner matmul sees the same precision policy:
+        // cuBLAS and custom kernels look at dst->op_params[0] to choose accum precision.
+        dst_slice.op = GGML_OP_MUL_MAT; // we're about to execute a plain matmul for this slice
+        memcpy(dst_slice.op_params, dst->op_params, sizeof(dst_slice.op_params));
+
         ggml_cuda_mul_mat(ctx, &src0_slice, &src1_slice, &dst_slice);
         CUDA_CHECK(cudaGetLastError());
 
