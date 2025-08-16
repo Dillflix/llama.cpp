@@ -920,7 +920,14 @@ ggml_tensor * llm_graph_context::build_moe_ffn(
         cb(cur, "ffn_moe_weighted", il);
     }
 
+    // UP projection: per-expert matmul
     ggml_tensor * up = build_lora_mm_id(up_exps, cur, selected_experts); // [n_ff, n_expert_used, n_tokens]
+    if (arch == LLM_ARCH_GLM4 || arch == LLM_ARCH_GLM4_MOE || arch == LLM_ARCH_OPENAI_MOE) {
+        // Prefer FP32 accumulators for numerical stability
+        if (up->op == GGML_OP_MUL_MAT || up->op == GGML_OP_MUL_MAT_ID) {
+            ggml_mul_mat_set_prec(up, GGML_PREC_F32);
+        }
+    }
     cb(up, "ffn_moe_up", il);
 
     if (up_exps_b) {
@@ -930,7 +937,13 @@ ggml_tensor * llm_graph_context::build_moe_ffn(
 
     ggml_tensor * experts = nullptr;
     if (gate_exps) {
+        // GATE projection: per-expert matmul
         cur = build_lora_mm_id(gate_exps, cur, selected_experts); // [n_ff, n_expert_used, n_tokens]
+        if (arch == LLM_ARCH_GLM4 || arch == LLM_ARCH_GLM4_MOE || arch == LLM_ARCH_OPENAI_MOE) {
+            if (cur->op == GGML_OP_MUL_MAT || cur->op == GGML_OP_MUL_MAT_ID) {
+                ggml_mul_mat_set_prec(cur, GGML_PREC_F32);
+            }
+        }
         cb(cur, "ffn_moe_gate", il);
     } else {
         cur = up;
@@ -978,7 +991,13 @@ ggml_tensor * llm_graph_context::build_moe_ffn(
             GGML_ABORT("fatal error");
     }
 
+    // DOWN projection: per-expert matmul
     experts = build_lora_mm_id(down_exps, cur, selected_experts); // [n_embd, n_expert_used, n_tokens]
+    if (arch == LLM_ARCH_GLM4 || arch == LLM_ARCH_GLM4_MOE || arch == LLM_ARCH_OPENAI_MOE) {
+        if (experts->op == GGML_OP_MUL_MAT || experts->op == GGML_OP_MUL_MAT_ID) {
+            ggml_mul_mat_set_prec(experts, GGML_PREC_F32);
+        }
+    }
     cb(experts, "ffn_moe_down", il);
 
     if (down_exps_b) {
@@ -988,7 +1007,7 @@ ggml_tensor * llm_graph_context::build_moe_ffn(
 
     if (!weight_before_ffn) {
         experts = ggml_mul(ctx0, experts, weights);
-        cb(cur, "ffn_moe_weighted", il);
+        cb(experts, "ffn_moe_weighted", il);
     }
 
     ggml_tensor * cur_experts[LLAMA_MAX_EXPERTS] = { nullptr };
@@ -1474,7 +1493,7 @@ ggml_tensor * llm_graph_context::build_attn(
 
     if (wo) {
         cur = build_lora_mm(wo, cur);
-        if (arch == LLM_ARCH_GLM4 || arch == LLM_ARCH_GLM4_MOE) {
+        if (arch == LLM_ARCH_GLM4 || arch == LLM_ARCH_GLM4_MOE || arch == LLM_ARCH_OPENAI_MOE) {
             // GLM4 and GLM4_MOE seem to have numerical issues with half-precision accumulators
             ggml_mul_mat_set_prec(cur, GGML_PREC_F32);
         }
@@ -1566,6 +1585,10 @@ ggml_tensor * llm_graph_context::build_attn_with_sinks(
 
     if (wo) {
         cur = build_lora_mm(wo, cur);
+        if (arch == LLM_ARCH_GLM4 || arch == LLM_ARCH_GLM4_MOE || arch == LLM_ARCH_OPENAI_MOE) {
+            // GLM4 and GLM4_MOE seem to have numerical issues with half-precision accumulators
+            ggml_mul_mat_set_prec(cur, GGML_PREC_F32);
+        }
     }
 
     if (wo_b) {
